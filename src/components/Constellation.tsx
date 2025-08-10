@@ -47,11 +47,11 @@ export default function Constellation() {
   };
 
   const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
-  const currentPath = LETTER_PATHS[currentLetterStr] || [];
+  const currentStars = LETTER_PATHS[currentLetterStr]?.stars || [];
 
   const renderedStars = useMemo(() => {
     if (phase === 'playing') {
-      return currentPath.map((star, index) => ({
+      return currentStars.map((star, index) => ({
         ...transformCoords(star),
         isCompleted: index < currentStarIndex,
         isNext: index === currentStarIndex,
@@ -62,7 +62,7 @@ export default function Constellation() {
     if (phase === 'finale' || phase === 'freeRoam') {
       let allStars: any[] = [];
       STAR_DATA.letters.forEach((letter, letterIdx) => {
-        const path = LETTER_PATHS[letter] || [];
+        const path = LETTER_PATHS[letter]?.stars || [];
         path.forEach((star, starIdx) => {
           allStars.push({
             ...transformCoords(star),
@@ -77,47 +77,50 @@ export default function Constellation() {
       return allStars;
     }
     return [];
-  }, [phase, currentPath, currentStarIndex, showWrongTapEffect, dims, completedLetters]);
+  }, [phase, currentStars, currentStarIndex, showWrongTapEffect, dims, completedLetters]);
   
   const renderedLines = useMemo(() => {
     const lines: any[] = [];
-    
-    // Draw lines for all completed letters
+    const drawLinesForLetter = (letter: string, letterIdx: number, maxStarIndex?: number) => {
+        const letterDef = LETTER_PATHS[letter];
+        if (!letterDef) return;
+        const stars = letterDef.stars;
+        const segments = letterDef.segments;
+
+        segments.forEach((segment, segIdx) => {
+            for (let i = 1; i < segment.length; i++) {
+                const startIdx = segment[i-1];
+                const endIdx = segment[i];
+                if (maxStarIndex === undefined || (startIdx < maxStarIndex && endIdx < maxStarIndex)) {
+                     const start = transformCoords(stars[startIdx]);
+                     const end = transformCoords(stars[endIdx]);
+                     lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-l${letterIdx}-s${segIdx}-i${i}`});
+                }
+            }
+        });
+    };
+
+    // Draw lines for all fully completed letters
     completedLetters.forEach((isCompleted, letterIdx) => {
       if (isCompleted) {
-        const letter = STAR_DATA.letters[letterIdx];
-        const path = LETTER_PATHS[letter];
-        for (let i = 1; i < path.length; i++) {
-          const start = transformCoords(path[i-1]);
-          const end = transformCoords(path[i]);
-          lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-completed-${letterIdx}-${i}`});
-        }
+        drawLinesForLetter(STAR_DATA.letters[letterIdx], letterIdx);
       }
     });
 
     // Draw lines for the current letter in progress
-    if (phase === 'playing' && currentStarIndex > 1) {
-       for (let i = 1; i < currentStarIndex; i++) {
-           const start = transformCoords(currentPath[i-1]);
-           const end = transformCoords(currentPath[i]);
-           lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-current-${currentLetterIndex}-${i}`});
-       }
+    if (phase === 'playing') {
+       drawLinesForLetter(currentLetterStr, currentLetterIndex, currentStarIndex);
     } else if (phase === 'finale' || phase === 'freeRoam') {
-      // In finale, all lines should be drawn. This covers any letters not marked as complete.
+      // In finale, draw any letters that weren't marked as complete for some reason
       STAR_DATA.letters.forEach((letter, letterIdx) => {
         if (!completedLetters[letterIdx]) {
-          const path = LETTER_PATHS[letter];
-          for (let i = 1; i < path.length; i++) {
-            const start = transformCoords(path[i-1]);
-            const end = transformCoords(path[i]);
-            lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-final-${letterIdx}-${i}`});
-          }
+          drawLinesForLetter(letter, letterIdx);
         }
       });
     }
 
     return lines;
-  }, [phase, currentStarIndex, currentLetterIndex, currentPath, dims, completedLetters]);
+  }, [phase, currentStarIndex, currentLetterIndex, currentLetterStr, dims, completedLetters]);
   
 
   const handleStarClick = (starIndex: number, letterIndex?: number) => {
@@ -173,7 +176,7 @@ export default function Constellation() {
                 star.isWrong && 'animate-shake fill-destructive',
                 phase === 'finale' && 'animate-fade-in-slow'
               )}
-              aria-label={`Star ${star.originalIndex + 1} of ${currentPath.length} for letter ${currentLetterStr}`}
+              aria-label={`Star ${star.originalIndex + 1} of ${currentStars.length} for letter ${currentLetterStr}`}
             />
            </g>
         ))}
@@ -189,4 +192,3 @@ export default function Constellation() {
     </div>
   );
 }
-

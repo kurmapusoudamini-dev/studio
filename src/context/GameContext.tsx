@@ -1,3 +1,4 @@
+
 'use client';
 import { STAR_DATA, LETTER_PATHS } from '@/lib/data';
 import type { Dispatch, ReactNode } from 'react';
@@ -119,7 +120,9 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
       // Correct Tap Logic
       const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
-      const currentPath = LETTER_PATHS[currentLetter];
+      const currentPath = LETTER_PATHS[currentLetter]?.stars;
+      if (!currentPath) return state; // Safety check
+
       const nextStarIndex = state.currentStarIndex + 1;
 
       // Is the letter complete?
@@ -156,6 +159,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         };
       } else {
         // Go to the next star in the same letter
+        // Only provide a random hint if it's not the first star of the letter
         const newHint = state.currentStarIndex > 0 ? getRandomHint(CORRECT_HINTS) : state.hintText;
         return { 
           ...state, 
