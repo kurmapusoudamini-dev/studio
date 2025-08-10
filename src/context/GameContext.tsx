@@ -43,7 +43,6 @@ interface GameState {
   isQuoteCardOpen: boolean;
   quote: string;
   showWrongTapEffect: { starIndex: number } | null;
-  aCount: number;
 }
 
 type Action =
@@ -54,8 +53,17 @@ type Action =
   | { type: 'LOAD_PROGRESS'; payload: GameState }
   | { type: 'RESET_WRONG_TAP_EFFECT' };
 
-const getQuoteKey = (letter: string, aCount: number) => {
-  if (letter !== 'A') return letter;
+
+const getQuoteKeyForLetter = (letter: string, letterIndex: number): string => {
+  if (letter !== 'A') {
+    return letter;
+  }
+  let aCount = 0;
+  for (let i = 0; i <= letterIndex; i++) {
+    if (STAR_DATA.letters[i] === 'A') {
+      aCount++;
+    }
+  }
   return `A${aCount}`;
 };
 
@@ -68,7 +76,6 @@ const initialState: GameState = {
   isQuoteCardOpen: false,
   quote: '',
   showWrongTapEffect: null,
-  aCount: 1,
 };
 
 const GameContext = createContext<{ state: GameState; dispatch: Dispatch<Action> } | undefined>(undefined);
@@ -84,21 +91,12 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TAP_STAR': {
       if (state.isQuoteCardOpen) return state;
 
-      const { tappedStarIndex, letterIndex } = action.payload;
+      const { tappedStarIndex, letterIndex, isFreeRoam } = action.payload;
       
-      if (state.phase === 'freeRoam') {
+      if (isFreeRoam) {
         if(letterIndex === undefined) return state;
         const letter = STAR_DATA.letters[letterIndex];
-        let aCountForQuote = 1;
-        if(letter === 'A') {
-          let seenAs = 0;
-          for(let i=0; i <= letterIndex; i++) {
-            if(STAR_DATA.letters[i] === 'A') seenAs++;
-          }
-          aCountForQuote = seenAs;
-        }
-
-        const quoteKey = getQuoteKey(letter, aCountForQuote);
+        const quoteKey = getQuoteKeyForLetter(letter, letterIndex);
         const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
         return {
           ...state,
@@ -129,13 +127,9 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const newCompletedLetters = [...state.completedLetters];
         newCompletedLetters[state.currentLetterIndex] = true;
         
-        let nextACount = state.aCount;
-        if (currentLetter === 'A') {
-          nextACount++;
-        }
-
-        const quoteKey = getQuoteKey(currentLetter, state.aCount);
+        const quoteKey = getQuoteKeyForLetter(currentLetter, state.currentLetterIndex);
         const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
+        
         const nextLetterIndex = state.currentLetterIndex + 1;
 
         // Is the whole name complete?
@@ -156,14 +150,12 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           currentLetterIndex: nextLetterIndex,
           currentStarIndex: 0,
           completedLetters: newCompletedLetters,
-          aCount: nextACount,
           isQuoteCardOpen: true,
           quote: quote,
           hintText: "A new letter awaits.",
         };
       } else {
         // Go to the next star in the same letter
-        // Only provide a random correct hint after the first star of a letter is passed.
         const newHint = state.currentStarIndex > 0 ? getRandomHint(CORRECT_HINTS) : state.hintText;
         return { 
           ...state, 
@@ -213,11 +205,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (savedState) {
         const parsedState = JSON.parse(savedState);
         const phase = ['intro', 'playing', 'finale', 'freeRoam'].includes(parsedState.phase) ? parsedState.phase : 'intro';
-        if (phase === 'intro') {
+        if (phase === 'intro' || !parsedState.completedLetters) {
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState } });
         } else {
             // Restore everything but ensure card is closed on reload and hint is correct
-            const hintText = (phase === 'playing' && parsedState.currentStarIndex === 0) ? getWelcomeHint() : "You can now tap on any letter to see its message again.";
+            const hintText = (phase === 'playing') ? getWelcomeHint() : "You can now tap on any letter to see its message again.";
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase, isQuoteCardOpen: false, hintText } });
         }
       }
