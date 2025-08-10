@@ -27,7 +27,7 @@
   }
  
   .dark {
-    --background: 240 64% 10%;
+    --background: 0 0% 0%;
     --foreground: 210 40% 98%;
     
     --card: 240 4% 12%;
@@ -63,8 +63,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-color: hsl(240, 64%, 27%);
-    background-image: radial-gradient(ellipse at bottom, hsl(275, 100%, 25%) 0%, hsl(240, 64%, 27%) 100%);
+    background-color: black;
+    background-image: radial-gradient(ellipse at bottom, hsl(240, 30%, 15%) 0%, black 70%);
     min-height: 100vh;
     min-height: 100dvh;
   }
