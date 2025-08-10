@@ -120,6 +120,17 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       }
 
       // Correct Tap Logic
+      const isFirstTapOfTheGame = state.currentLetterIndex === 0 && state.currentStarIndex === 0;
+
+      if (isFirstTapOfTheGame) {
+        return {
+          ...state,
+          currentStarIndex: 1,
+          hintText: getRandomHint(CORRECT_HINTS), // Now we can give a correct hint
+          showWrongTapEffect: null,
+        };
+      }
+
       const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
       const currentPath = LETTER_PATHS[currentLetter];
       const nextStarIndex = state.currentStarIndex + 1;
@@ -163,11 +174,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         };
       } else {
         // Go to the next star in the same letter
-         const isFirstTapOfTheGame = state.currentLetterIndex === 0 && state.currentStarIndex === 0;
         return { 
           ...state, 
           currentStarIndex: nextStarIndex, 
-          hintText: isFirstTapOfTheGame ? getWelcomeHint() : getRandomHint(CORRECT_HINTS),
+          hintText: getRandomHint(CORRECT_HINTS),
           showWrongTapEffect: null,
         };
       }
