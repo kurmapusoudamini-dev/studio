@@ -109,7 +109,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       }
 
       if (state.phase !== 'playing') return state;
-
+      
       const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
       const currentPath = LETTER_PATHS[currentLetter];
 
@@ -161,6 +161,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             ...state, 
             currentStarIndex: nextStarIndex, 
             hintText: getRandomHint(CORRECT_HINTS),
+            showWrongTapEffect: null,
           };
         }
       } else {
@@ -181,12 +182,18 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, showWrongTapEffect: null };
       
     case 'CLOSE_QUOTE_CARD':
-      // After closing a quote, reset the hint to be a generic incorrect one to guide the user.
-      return { ...state, isQuoteCardOpen: false, hintText: getRandomHint(INCORRECT_HINTS) };
-      
+       if (state.phase === 'playing') {
+          return {
+            ...state,
+            isQuoteCardOpen: false,
+            hintText: getWelcomeHint(),
+          };
+        }
+      return { ...state, isQuoteCardOpen: false };
+
     case 'REPLAY':
-      // After finale, replay enters free roam mode
-      return { ...initialState, phase: 'freeRoam', completedLetters: Array(STAR_DATA.letters.length).fill(true), hintText: 'Tap any star to see its message again.' };
+      localStorage.removeItem('starlight-serenade-progress');
+      return initialState;
 
     default:
       return state;
