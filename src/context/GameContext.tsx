@@ -82,14 +82,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, phase: 'playing', hintText: getWelcomeHint() };
 
     case 'TAP_STAR': {
-      if (state.isQuoteCardOpen) return state; // Prevent taps while card is open
+      if (state.isQuoteCardOpen) return state;
 
       const { tappedStarIndex, letterIndex } = action.payload;
       
       if (state.phase === 'freeRoam') {
         if(letterIndex === undefined) return state;
         const letter = STAR_DATA.letters[letterIndex];
-        // In free roam, we need to determine which 'A' it is if there are multiple.
         let aCountForQuote = 1;
         if(letter === 'A') {
           let seenAs = 0;
@@ -110,70 +109,65 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
       if (state.phase !== 'playing') return state;
       
-      const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
-      const currentPath = LETTER_PATHS[currentLetter];
-
       const isCorrect = tappedStarIndex === state.currentStarIndex;
 
-      if (isCorrect) {
-        const nextStarIndex = state.currentStarIndex + 1;
-        if (nextStarIndex >= currentPath.length) {
-          // Letter complete
-          const newCompletedLetters = [...state.completedLetters];
-          newCompletedLetters[state.currentLetterIndex] = true;
-          const nextLetterIndex = state.currentLetterIndex + 1;
-
-          let nextACount = state.aCount;
-          if (currentLetter === 'A') {
-            nextACount++;
-          }
-
-          const quoteKey = getQuoteKey(currentLetter, state.aCount);
-          const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
-
-          if (nextLetterIndex >= STAR_DATA.letters.length) {
-            // All letters complete
-            return {
-              ...state,
-              phase: 'finale',
-              currentStarIndex: 0,
-              completedLetters: newCompletedLetters,
-              isQuoteCardOpen: true,
-              quote,
-              hintText: getRandomHint(CORRECT_HINTS),
-            };
-          } else {
-            // Go to next letter
-            return {
-              ...state,
-              currentLetterIndex: nextLetterIndex,
-              currentStarIndex: 0,
-              completedLetters: newCompletedLetters,
-              aCount: nextACount,
-              isQuoteCardOpen: true,
-              quote: quote,
-              hintText: getRandomHint(CORRECT_HINTS),
-            };
-          }
-        } else {
-          // Go to next star
-          return { 
-            ...state, 
-            currentStarIndex: nextStarIndex, 
-            hintText: getRandomHint(CORRECT_HINTS),
-            showWrongTapEffect: null,
-          };
-        }
-      } else {
-        // Wrong tap
-        const hint = state.currentStarIndex === 0 && state.currentLetterIndex === 0 
-          ? getWelcomeHint()
-          : getRandomHint(INCORRECT_HINTS);
-
+      if (!isCorrect) {
         return { 
           ...state, 
           showWrongTapEffect: { starIndex: tappedStarIndex }, 
-          hintText: hint,
+          hintText: getRandomHint(INCORRECT_HINTS),
+        };
+      }
+
+      // Correct Tap Logic
+      const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
+      const currentPath = LETTER_PATHS[currentLetter];
+      const nextStarIndex = state.currentStarIndex + 1;
+
+      // Is the letter complete?
+      if (nextStarIndex >= currentPath.length) {
+        const newCompletedLetters = [...state.completedLetters];
+        newCompletedLetters[state.currentLetterIndex] = true;
+        
+        let nextACount = state.aCount;
+        if (currentLetter === 'A') {
+          nextACount++;
+        }
+
+        const quoteKey = getQuoteKey(currentLetter, state.aCount);
+        const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
+        const nextLetterIndex = state.currentLetterIndex + 1;
+
+        // Is the whole name complete?
+        if (nextLetterIndex >= STAR_DATA.letters.length) {
+          return {
+            ...state,
+            phase: 'finale',
+            completedLetters: newCompletedLetters,
+            isQuoteCardOpen: true,
+            quote,
+            hintText: getRandomHint(CORRECT_HINTS),
+          };
+        }
+
+        // Go to the next letter
+        return {
+          ...state,
+          currentLetterIndex: nextLetterIndex,
+          currentStarIndex: 0,
+          completedLetters: newCompletedLetters,
+          aCount: nextACount,
+          isQuoteCardOpen: true,
+          quote: quote,
+          hintText: getRandomHint(CORRECT_HINTS),
+        };
+      } else {
+        // Go to the next star in the same letter
+        return { 
+          ...state, 
+          currentStarIndex: nextStarIndex, 
+          hintText: getRandomHint(CORRECT_HINTS),
+          showWrongTapEffect: null,
         };
       }
     }
@@ -186,10 +180,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           return { ...state, phase: 'freeRoam', isQuoteCardOpen: false, hintText: "You can now tap on any letter to see its message again." };
        }
        if (state.phase === 'playing') {
+          const isFirstLetter = state.currentLetterIndex === 0 || (state.currentLetterIndex === 1 && state.currentStarIndex === 0);
           return {
             ...state,
             isQuoteCardOpen: false,
-            hintText: getWelcomeHint(),
+            hintText: isFirstLetter ? getWelcomeHint() : getRandomHint(CORRECT_HINTS),
           };
        }
        return { ...state, isQuoteCardOpen: false };
@@ -197,7 +192,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REPLAY':
       localStorage.removeItem('starlight-serenade-progress');
-      // A clean slate, but we go directly to 'playing' to skip the intro animation.
       return { 
           ...initialState, 
           phase: 'playing', 
@@ -217,12 +211,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const savedState = localStorage.getItem('starlight-serenade-progress');
       if (savedState) {
         const parsedState = JSON.parse(savedState);
-        // Ensure phase is valid, default to intro if not
         const phase = ['intro', 'playing', 'finale', 'freeRoam'].includes(parsedState.phase) ? parsedState.phase : 'intro';
         if (phase === 'intro') {
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState } });
         } else {
-            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase } });
+            // Restore everything but ensure card is closed on reload
+            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase, isQuoteCardOpen: false } });
         }
       }
     } catch (e) {
@@ -250,5 +244,3 @@ export const useGame = () => {
   }
   return context;
 };
-
-    
