@@ -46,25 +46,27 @@ export default function Constellation() {
     return { x: star.x * scale + xOffset, y: star.y * scale + yOffset };
   };
 
-  const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
-  const currentStars = LETTER_PATHS[currentLetterStr]?.stars || [];
-
   const renderedStars = useMemo(() => {
+    let starsToRender: any[] = [];
+    
     if (phase === 'playing') {
-      return currentStars.map((star, index) => ({
+      // Show stars for the current letter
+      const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
+      const currentLetterStars = LETTER_PATHS[currentLetterStr]?.stars || [];
+      starsToRender = currentLetterStars.map((star, index) => ({
         ...transformCoords(star),
         isCompleted: index < currentStarIndex,
         isNext: index === currentStarIndex,
         isWrong: showWrongTapEffect?.starIndex === index,
         originalIndex: index,
+        letterIndex: currentLetterIndex
       }));
-    }
-    if (phase === 'finale' || phase === 'freeRoam') {
-      let allStars: any[] = [];
+    } else if (phase === 'finale' || phase === 'freeRoam') {
+      // Show all stars for the completed constellation
       STAR_DATA.letters.forEach((letter, letterIdx) => {
         const path = LETTER_PATHS[letter]?.stars || [];
         path.forEach((star, starIdx) => {
-          allStars.push({
+          starsToRender.push({
             ...transformCoords(star),
             isCompleted: true,
             isNext: false,
@@ -74,59 +76,75 @@ export default function Constellation() {
           });
         });
       });
-      return allStars;
     }
-    return [];
-  }, [phase, currentStars, currentStarIndex, showWrongTapEffect, dims, completedLetters]);
+    
+    return starsToRender;
+  }, [phase, currentLetterIndex, currentStarIndex, showWrongTapEffect, dims]);
+  
   
   const renderedLines = useMemo(() => {
     const lines: any[] = [];
-    const drawLinesForLetter = (letter: string, letterIdx: number, maxStarIndex?: number) => {
-        const letterDef = LETTER_PATHS[letter];
-        if (!letterDef) return;
-        const stars = letterDef.stars;
-        const segments = letterDef.segments;
+    const drawLinesForLetter = (letterIndex: number, maxStarIndex?: number) => {
+      const letterStr = STAR_DATA.letters[letterIndex];
+      const letterDef = LETTER_PATHS[letterStr];
+      if (!letterDef) return;
 
-        segments.forEach((segment, segIdx) => {
-            for (let i = 1; i < segment.length; i++) {
-                const startIdx = segment[i-1];
-                const endIdx = segment[i];
-                if (maxStarIndex === undefined || (startIdx < maxStarIndex && endIdx < maxStarIndex)) {
-                     const start = transformCoords(stars[startIdx]);
-                     const end = transformCoords(stars[endIdx]);
-                     lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-l${letterIdx}-s${segIdx}-i${i}`});
-                }
-            }
-        });
+      const stars = letterDef.stars;
+      const segments = letterDef.segments;
+
+      segments.forEach((segment, segIdx) => {
+        for (let i = 1; i < segment.length; i++) {
+          const startIdx = segment[i - 1];
+          const endIdx = segment[i];
+
+          // If a maxStarIndex is provided (for in-progress letters),
+          // only draw the segment if both start and end stars are completed.
+          if (maxStarIndex === undefined || (startIdx < maxStarIndex && endIdx < maxStarIndex)) {
+            const start = transformCoords(stars[startIdx]);
+            const end = transformCoords(stars[endIdx]);
+            lines.push({
+              x1: start.x,
+              y1: start.y,
+              x2: end.x,
+              y2: end.y,
+              key: `line-l${letterIndex}-s${segIdx}-i${i}`
+            });
+          }
+        }
+      });
     };
 
     if (phase === 'playing') {
-        // Draw all fully completed letters
-        completedLetters.forEach((isCompleted, letterIdx) => {
-            if (isCompleted) {
-                drawLinesForLetter(STAR_DATA.letters[letterIdx], letterIdx);
-            }
-        });
-        // Draw the current in-progress letter
-        if (!completedLetters[currentLetterIndex]) {
-            drawLinesForLetter(currentLetterStr, currentLetterIndex, currentStarIndex);
-        }
-    } else if (phase === 'finale' || phase === 'freeRoam') {
-        // Draw all letters since the whole constellation is complete
-        STAR_DATA.letters.forEach((letter, letterIdx) => {
-            drawLinesForLetter(letter, letterIdx);
-        });
+      // Draw lines for the current, in-progress letter
+      drawLinesForLetter(currentLetterIndex, currentStarIndex);
+    }
+    
+    // Always draw lines for all fully completed letters
+    completedLetters.forEach((isCompleted, letterIdx) => {
+      if (isCompleted) {
+        drawLinesForLetter(letterIdx);
+      }
+    });
+
+    if (phase === 'finale' || phase === 'freeRoam') {
+      // In finale/freeRoam, all letters are considered complete
+      STAR_DATA.letters.forEach((_, letterIdx) => {
+        drawLinesForLetter(letterIdx);
+      });
     }
 
     return lines;
-  }, [phase, currentStarIndex, currentLetterIndex, currentLetterStr, dims, completedLetters]);
-  
+  }, [phase, currentLetterIndex, currentStarIndex, completedLetters, dims]);
+
 
   const handleStarClick = (starIndex: number, letterIndex?: number) => {
     if (phase === 'freeRoam') {
       dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex, letterIndex, isFreeRoam: true } });
     } else {
-      dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex } });
+      // During 'playing', only clicks on the current letter are valid.
+      if (letterIndex === currentLetterIndex) {
+        dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex } });
+      }
     }
   };
   
@@ -134,6 +152,7 @@ export default function Constellation() {
     dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: currentStarIndex } });
   };
 
+  const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
 
   return (
     <div ref={containerRef} className="w-full h-full">
@@ -148,12 +167,15 @@ export default function Constellation() {
           </filter>
           <path id="star-path" d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
         </defs>
+        
+        {/* Render lines for completed letters first (underneath) */}
         <g>
           {renderedLines.map(({ key, ...lineProps }) => (
             <line key={key} {...lineProps}
               className={cn(
-                'stroke-primary transition-all duration-500',
-                prefersReducedMotion ? 'animate-fade-in' : ''
+                'stroke-primary/70 transition-all duration-500',
+                 (phase === 'finale' || phase === 'freeRoam') ? 'stroke-primary' : '',
+                 prefersReducedMotion ? 'animate-fade-in' : ''
               )}
               strokeWidth="2"
               strokeLinecap="round"
@@ -162,8 +184,9 @@ export default function Constellation() {
           ))}
         </g>
         
+        {/* Render stars */}
         {renderedStars.map((star, i) => (
-           <g key={`star-group-${star.letterIndex ?? currentLetterIndex}-${star.originalIndex}`} 
+           <g key={`star-group-${star.letterIndex}-${star.originalIndex}`} 
               transform={`translate(${star.x}, ${star.y}) scale(1.5)`}
               onClick={() => handleStarClick(star.originalIndex, star.letterIndex)}>
             <use
@@ -173,16 +196,16 @@ export default function Constellation() {
                 star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
                 star.isNext && 'animate-pulse star-glow-active',
                 star.isWrong && 'animate-shake fill-destructive',
+                (phase === 'finale' || (phase === 'playing' && completedLetters[star.letterIndex])) && 'star-glow',
                 phase === 'finale' && 'animate-fade-in-slow'
               )}
-              aria-label={`Star ${star.originalIndex + 1} of ${currentStars.length} for letter ${currentLetterStr}`}
+              aria-label={`Star ${star.originalIndex + 1} for letter ${STAR_DATA.letters[star.letterIndex]}`}
             />
            </g>
         ))}
 
       </svg>
       
-
       {prefersReducedMotion && phase === 'playing' && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
             <Button onClick={handleNextClick}>Next Star</Button>
