@@ -70,8 +70,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         if(letterIndex === undefined) return state;
         const letter = STAR_DATA.letters[letterIndex];
         // In free roam, we need to determine which 'A' it is if there are multiple.
-        // This is a simplification; a more robust solution would track the specific A's position.
-        // For now, let's just show the first A's quote.
         let aCountForQuote = 1;
         if(letter === 'A') {
           let seenAs = 0;
@@ -123,6 +121,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               isQuoteCardOpen: true,
               quote,
               lastTappedStar: { tappedStarIndex, isCorrect },
+              hintText: 'Beautiful!', // Immediate feedback
             };
           } else {
             // Go to next letter
@@ -135,15 +134,26 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               isQuoteCardOpen: true,
               quote: quote,
               lastTappedStar: { tappedStarIndex, isCorrect },
+              hintText: 'Beautiful!', // Immediate feedback
             };
           }
         } else {
           // Go to next star
-          return { ...state, currentStarIndex: nextStarIndex, lastTappedStar: { tappedStarIndex, isCorrect } };
+          return { 
+            ...state, 
+            currentStarIndex: nextStarIndex, 
+            lastTappedStar: { tappedStarIndex, isCorrect },
+            hintText: 'Beautiful!', // Immediate feedback
+          };
         }
       } else {
         // Wrong tap
-        return { ...state, showWrongTapEffect: { starIndex: tappedStarIndex }, lastTappedStar: { tappedStarIndex, isCorrect } };
+        return { 
+          ...state, 
+          showWrongTapEffect: { starIndex: tappedStarIndex }, 
+          lastTappedStar: { tappedStarIndex, isCorrect },
+          hintText: 'Almost—try the glowing star.', // Immediate feedback
+        };
       }
     }
     case 'RESET_LAST_TAPPED_STAR':
@@ -159,7 +169,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, hintText: action.payload };
 
     case 'REPLAY':
-      return { ...initialState, phase: 'playing' };
+      // After finale, replay enters free roam mode
+      return { ...initialState, phase: 'freeRoam', completedLetters: Array(STAR_DATA.letters.length).fill(true), hintText: 'Tap any star to see its message again.' };
 
     default:
       return state;
@@ -169,46 +180,48 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   
-  const { lastTappedStar, phase } = state;
+  const { lastTappedStar, phase, currentLetterIndex, currentStarIndex } = state;
 
   useEffect(() => {
+    // This effect now only fetches the AI hint in the background
     if (phase !== 'playing' || !lastTappedStar) return;
 
     const { isCorrect } = lastTappedStar;
-    const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
+    const currentLetter = STAR_DATA.letters[currentLetterIndex];
     const currentPath = LETTER_PATHS[currentLetter];
 
     const hintInput: HintInput = {
       isCorrect,
-      currentLetterIndex: state.currentLetterIndex,
-      currentStarIndex: state.currentStarIndex,
+      currentLetterIndex: currentLetterIndex,
+      // If correct, we need to send the index of the star that was just completed
+      // If incorrect, we send the current star index they should be aiming for
+      currentStarIndex: isCorrect ? currentStarIndex -1 : currentStarIndex,
       totalStarsInLetter: currentPath.length,
     };
     
     let isMounted = true;
     
+    // Fetch AI hint but don't wait for it to update UI
     getHint(hintInput)
       .then(res => {
         if (isMounted) {
+          // Update the hint text when the AI response arrives
           dispatch({ type: 'SET_HINT', payload: res.hint });
         }
       })
-      .catch(() => {
-        if (isMounted) {
-          dispatch({
-            type: 'SET_HINT',
-            payload: isCorrect ? 'Beautiful!' : 'Almost—try the glowing star.',
-          });
-        }
+      .catch((err) => {
+        console.error("Failed to get hint:", err);
+        // The reducer has already set a sensible default, so we might not need to do anything here
       })
       .finally(() => {
         if (isMounted) {
+          // Reset the trigger for this effect
           dispatch({ type: 'RESET_LAST_TAPPED_STAR' });
         }
       });
       
     return () => { isMounted = false; }
-  }, [lastTappedStar, phase, state.currentLetterIndex, state.currentStarIndex]);
+  }, [lastTappedStar, phase, currentLetterIndex, currentStarIndex]);
 
 
   useEffect(() => {
@@ -216,7 +229,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const savedState = localStorage.getItem('starlight-serenade-progress');
       if (savedState) {
         const parsedState = JSON.parse(savedState);
-        dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase: parsedState.phase || 'intro' } });
+        // Ensure phase is valid, default to intro if not
+        const phase = ['intro', 'playing', 'finale', 'freeRoam'].includes(parsedState.phase) ? parsedState.phase : 'intro';
+        dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase } });
       }
     } catch (e) {
       console.error("Failed to load state from localStorage", e);
