@@ -3,7 +3,7 @@ import type { HintInput } from '@/ai/flows/contextual-hint-tool';
 import { getHint } from '@/ai/flows/contextual-hint-tool';
 import { STAR_DATA, LETTER_PATHS } from '@/lib/data';
 import type { Dispatch, ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 
 type GamePhase = 'intro' | 'playing' | 'finale' | 'freeRoam';
 
@@ -17,6 +17,10 @@ interface GameState {
   quote: string;
   showWrongTapEffect: { starIndex: number } | null;
   aCount: number;
+  lastTappedStar: {
+    tappedStarIndex: number;
+    isCorrect: boolean;
+  } | null;
 }
 
 type Action =
@@ -26,7 +30,8 @@ type Action =
   | { type: 'REPLAY' }
   | { type: 'FINISH_INTRO' }
   | { type: 'LOAD_PROGRESS'; payload: GameState }
-  | { type: 'RESET_WRONG_TAP_EFFECT' };
+  | { type: 'RESET_WRONG_TAP_EFFECT' }
+  | { type: 'RESET_LAST_TAPPED_STAR' };
 
 const getQuoteKey = (letter: string, aCount: number) => {
   if (letter !== 'A') return letter;
@@ -43,6 +48,7 @@ const initialState: GameState = {
   quote: '',
   showWrongTapEffect: null,
   aCount: 1,
+  lastTappedStar: null,
 };
 
 const GameContext = createContext<{ state: GameState; dispatch: Dispatch<Action> } | undefined>(undefined);
@@ -73,24 +79,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
       const isCorrect = tappedStarIndex === state.currentStarIndex;
 
-      const hintInput: HintInput = {
-        isCorrect,
-        currentLetterIndex: state.currentLetterIndex,
-        currentStarIndex: state.currentStarIndex,
-        totalStarsInLetter: currentPath.length,
-      };
-
-      getHint(hintInput)
-        .then(res => {
-          dispatch({ type: 'SET_HINT', payload: res.hint });
-        })
-        .catch(() => {
-          dispatch({
-            type: 'SET_HINT',
-            payload: isCorrect ? 'Beautiful!' : 'Almost—try the glowing star.',
-          });
-        });
-
       if (isCorrect) {
         const nextStarIndex = state.currentStarIndex + 1;
         if (nextStarIndex >= currentPath.length) {
@@ -103,7 +91,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           if (currentLetter === 'A') {
             nextACount++;
           }
-          
+
           const quoteKey = getQuoteKey(currentLetter, state.aCount);
           const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
 
@@ -116,6 +104,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               completedLetters: newCompletedLetters,
               isQuoteCardOpen: true,
               quote,
+              lastTappedStar: { tappedStarIndex, isCorrect },
             };
           } else {
             // Go to next letter
@@ -127,17 +116,21 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               aCount: nextACount,
               isQuoteCardOpen: true,
               quote: quote,
+              lastTappedStar: { tappedStarIndex, isCorrect },
             };
           }
         } else {
           // Go to next star
-          return { ...state, currentStarIndex: nextStarIndex };
+          return { ...state, currentStarIndex: nextStarIndex, lastTappedStar: { tappedStarIndex, isCorrect } };
         }
       } else {
         // Wrong tap
-        return { ...state, showWrongTapEffect: { starIndex: tappedStarIndex } };
+        return { ...state, showWrongTapEffect: { starIndex: tappedStarIndex }, lastTappedStar: { tappedStarIndex, isCorrect } };
       }
     }
+    case 'RESET_LAST_TAPPED_STAR':
+      return { ...state, lastTappedStar: null };
+
     case 'RESET_WRONG_TAP_EFFECT':
       return { ...state, showWrongTapEffect: null };
       
@@ -160,6 +153,48 @@ let dispatch: Dispatch<Action>;
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [state, _dispatch] = useReducer(gameReducer, initialState);
   dispatch = _dispatch;
+  
+  const { lastTappedStar, phase } = state;
+
+  useEffect(() => {
+    if (phase !== 'playing' || !lastTappedStar) return;
+
+    const { isCorrect } = lastTappedStar;
+    const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
+    const currentPath = LETTER_PATHS[currentLetter];
+
+    const hintInput: HintInput = {
+      isCorrect,
+      currentLetterIndex: state.currentLetterIndex,
+      currentStarIndex: state.currentStarIndex,
+      totalStarsInLetter: currentPath.length,
+    };
+    
+    let isMounted = true;
+    
+    getHint(hintInput)
+      .then(res => {
+        if (isMounted) {
+          dispatch({ type: 'SET_HINT', payload: res.hint });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          dispatch({
+            type: 'SET_HINT',
+            payload: isCorrect ? 'Beautiful!' : 'Almost—try the glowing star.',
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          dispatch({ type: 'RESET_LAST_TAPPED_STAR' });
+        }
+      });
+      
+    return () => { isMounted = false; }
+  }, [lastTappedStar, phase, state.currentLetterIndex, state.currentStarIndex]);
+
 
   useEffect(() => {
     try {
