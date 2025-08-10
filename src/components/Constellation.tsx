@@ -79,7 +79,7 @@ export default function Constellation() {
     }
     
     return starsToRender;
-  }, [phase, currentLetterIndex, currentStarIndex, completedLetters, showWrongTapEffect, dims]);
+  }, [phase, currentLetterIndex, currentStarIndex, showWrongTapEffect, dims]);
 
   const renderedLines = useMemo(() => {
     const lines: any[] = [];
@@ -108,8 +108,14 @@ export default function Constellation() {
         }
       });
     };
-  
+
     if (phase === 'playing') {
+      // Draw lines for completed letters
+      completedLetters.forEach((isCompleted, letterIdx) => {
+        if (isCompleted) {
+          drawLinesForLetter(letterIdx);
+        }
+      });
       // Draw lines for the current, in-progress letter
       drawLinesForLetter(currentLetterIndex, currentStarIndex);
     } else if (phase === 'finale' || phase === 'freeRoam') {
@@ -117,13 +123,6 @@ export default function Constellation() {
       STAR_DATA.letters.forEach((_, letterIdx) => {
         drawLinesForLetter(letterIdx);
       });
-    } else {
-        // Draw lines for all fully completed letters
-        completedLetters.forEach((isCompleted, letterIdx) => {
-          if (isCompleted) {
-            drawLinesForLetter(letterIdx);
-          }
-        });
     }
   
     return lines;
@@ -145,8 +144,6 @@ export default function Constellation() {
     dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: currentStarIndex } });
   };
 
-  const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
-
   return (
     <div ref={containerRef} className="w-full h-full">
       <svg className="absolute inset-0 w-full h-full overflow-visible">
@@ -161,14 +158,14 @@ export default function Constellation() {
           <path id="star-path" d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
         </defs>
         
-        {/* Render lines for completed letters first (underneath) */}
+        {/* Render lines */}
         <g>
           {renderedLines.map(({ key, ...lineProps }) => (
             <line key={key} {...lineProps}
               className={cn(
                 'stroke-primary/70 transition-all duration-500',
                  (phase === 'finale' || phase === 'freeRoam') ? 'stroke-primary' : '',
-                 prefersReducedMotion ? 'animate-fade-in' : ''
+                 prefersReducedMotion ? 'animate-fade-in' : 'rose-blessing'
               )}
               strokeWidth="2"
               strokeLinecap="round"
@@ -178,7 +175,7 @@ export default function Constellation() {
         </g>
         
         {/* Render stars */}
-        {renderedStars.map((star, i) => (
+        {renderedStars.map((star) => (
            <g key={`star-group-${star.letterIndex}-${star.originalIndex}`} 
               transform={`translate(${star.x}, ${star.y}) scale(1.5)`}
               onClick={() => handleStarClick(star.originalIndex, star.letterIndex)}>
@@ -189,7 +186,7 @@ export default function Constellation() {
                 star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
                 star.isNext && 'animate-pulse star-glow-active',
                 star.isWrong && 'animate-shake fill-destructive',
-                (phase === 'finale' || (phase === 'playing' && completedLetters[star.letterIndex])) && 'star-glow',
+                (phase === 'finale' || phase === 'freeRoam' || completedLetters[star.letterIndex]) && 'star-glow',
                 phase === 'finale' && 'animate-fade-in-slow'
               )}
               aria-label={`Star ${star.originalIndex + 1} for letter ${STAR_DATA.letters[star.letterIndex]}`}
