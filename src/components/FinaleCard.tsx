@@ -8,6 +8,18 @@ import { useState } from 'react';
 import { generateWallpaper } from '@/lib/wallpaper';
 import SaveWallpaperDialog from './SaveWallpaperDialog';
 import { RotateCcw, Download } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 export default function FinaleCard() {
   const { dispatch } = useGame();
@@ -44,10 +56,26 @@ export default function FinaleCard() {
             <p className="text-center text-lg">{STAR_DATA.finaleNote}</p>
           </CardContent>
           <CardFooter className="flex-col gap-4 sm:flex-row">
-            <Button onClick={handleReplay} variant="outline" className="w-full">
-              <RotateCcw className="mr-2" />
-              Replay the stars
-            </Button>
+             <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <RotateCcw className="mr-2" />
+                  Replay the stars
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start Over?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will restart your journey through the stars from the beginning. Are you sure?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleReplay}>Restart</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={handleSaveWallpaper} disabled={isGenerating} className="w-full">
                <Download className="mr-2" />
               {isGenerating ? 'Creating magic...' : 'Save as wallpaper'}
