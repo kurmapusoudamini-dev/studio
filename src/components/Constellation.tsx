@@ -100,17 +100,16 @@ export default function Constellation() {
         });
     };
 
-    // Draw lines for all fully completed letters
-    completedLetters.forEach((isCompleted, letterIdx) => {
-      if (isCompleted) {
-        drawLinesForLetter(STAR_DATA.letters[letterIdx], letterIdx);
-      }
-    });
-
-    // Draw lines for the current letter in progress
     if (phase === 'playing' && !completedLetters[currentLetterIndex]) {
        drawLinesForLetter(currentLetterStr, currentLetterIndex, currentStarIndex);
+    } else if (phase === 'finale' || phase === 'freeRoam') {
+        completedLetters.forEach((isCompleted, letterIdx) => {
+            if (isCompleted) {
+                drawLinesForLetter(STAR_DATA.letters[letterIdx], letterIdx);
+            }
+        });
     }
+
 
     return lines;
   }, [phase, currentStarIndex, currentLetterIndex, currentLetterStr, dims, completedLetters]);
