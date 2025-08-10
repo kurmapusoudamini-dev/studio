@@ -83,4 +83,18 @@
   .star-glow-active {
     filter: drop-shadow(0 0 4px hsl(var(--primary))) drop-shadow(0 0 12px hsl(var(--primary)));
   }
+  .rose-blessing {
+    animation: rose-bloom 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+}
+
+@keyframes rose-bloom {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

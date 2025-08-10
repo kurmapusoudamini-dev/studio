@@ -127,6 +127,7 @@ export default function Constellation() {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <path id="star-path" d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
         </defs>
         <g>
           {renderedLines.map(line => (
@@ -141,23 +142,26 @@ export default function Constellation() {
             />
           ))}
         </g>
+        
+        {renderedStars.map((star, i) => (
+           <g key={`star-group-${star.letterIndex ?? currentLetterIndex}-${star.originalIndex}`} transform={`translate(${star.x}, ${star.y}) scale(1.5)`}>
+            <use
+              href="#star-path"
+              onClick={() => handleStarClick(star.originalIndex)}
+              className={cn(
+                'fill-accent transition-all duration-300 transform -translate-x-3 -translate-y-3 cursor-pointer',
+                star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
+                star.isNext && 'animate-pulse star-glow-active',
+                star.isWrong && 'animate-shake fill-destructive',
+                phase === 'finale' && 'animate-fade-in-slow'
+              )}
+              aria-label={`Star ${star.originalIndex + 1} of ${currentPath.length} for letter ${currentLetterStr}`}
+            />
+           </g>
+        ))}
+
       </svg>
       
-      {renderedStars.map((star, i) => (
-        <button
-          key={`star-${star.letterIndex ?? currentLetterIndex}-${star.originalIndex}`}
-          onClick={() => handleStarClick(star.originalIndex)}
-          className={cn(
-            'absolute w-11 h-11 rounded-full bg-accent transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 focus:outline-none focus:ring-2 focus:ring-primary',
-            star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
-            star.isNext && 'animate-pulse star-glow-active',
-            star.isWrong && 'animate-shake bg-destructive',
-            phase === 'finale' && 'animate-fade-in-slow',
-          )}
-          style={{ left: star.x, top: star.y }}
-          aria-label={`Star ${star.originalIndex + 1} of ${currentPath.length} for letter ${currentLetterStr}`}
-        />
-      ))}
 
       {prefersReducedMotion && phase === 'playing' && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
