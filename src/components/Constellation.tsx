@@ -112,7 +112,7 @@ export default function Constellation() {
   };
   
   const handleNextClick = () => {
-    handleStarClick(currentStarIndex);
+    dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: currentStarIndex } });
   };
 
 
