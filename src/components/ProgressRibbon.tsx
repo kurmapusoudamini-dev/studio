@@ -3,6 +3,7 @@
 import { useGame } from '@/context/GameContext';
 import { STAR_DATA } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 export default function ProgressRibbon() {
   const { state } = useGame();
