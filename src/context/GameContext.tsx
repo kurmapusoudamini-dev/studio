@@ -29,6 +29,7 @@ const INCORRECT_HINTS = [
   "Don't give up! The right star is out there, glowing for you.",
 ];
 
+const getWelcomeHint = () => "Find the first glowing star to begin your journey.";
 const getRandomHint = (hints: string[]) => hints[Math.floor(Math.random() * hints.length)];
 
 type GamePhase = 'intro' | 'playing' | 'finale' | 'freeRoam';
@@ -78,7 +79,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return action.payload;
 
     case 'FINISH_INTRO':
-      return { ...state, phase: 'playing', hintText: getRandomHint(INCORRECT_HINTS) };
+      return { ...state, phase: 'playing', hintText: getWelcomeHint() };
 
     case 'TAP_STAR': {
       if (state.isQuoteCardOpen) return state; // Prevent taps while card is open
@@ -164,10 +165,14 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         }
       } else {
         // Wrong tap
+        const hint = state.currentStarIndex === 0 && state.currentLetterIndex === 0 
+          ? getWelcomeHint()
+          : getRandomHint(INCORRECT_HINTS);
+
         return { 
           ...state, 
           showWrongTapEffect: { starIndex: tappedStarIndex }, 
-          hintText: getRandomHint(INCORRECT_HINTS),
+          hintText: hint,
         };
       }
     }
@@ -176,6 +181,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, showWrongTapEffect: null };
       
     case 'CLOSE_QUOTE_CARD':
+      // After closing a quote, reset the hint to be a generic incorrect one to guide the user.
       return { ...state, isQuoteCardOpen: false, hintText: getRandomHint(INCORRECT_HINTS) };
       
     case 'REPLAY':
