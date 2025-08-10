@@ -84,7 +84,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TAP_STAR': {
       if (state.isQuoteCardOpen) return state; // Prevent taps while card is open
 
-      const { tappedStarIndex, isFreeRoam, letterIndex } = action.payload;
+      const { tappedStarIndex, letterIndex } = action.payload;
       
       if (state.phase === 'freeRoam') {
         if(letterIndex === undefined) return state;
@@ -181,19 +181,28 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'RESET_WRONG_TAP_EFFECT':
       return { ...state, showWrongTapEffect: null };
       
-    case 'CLOSE_QUOTE_CARD':
+    case 'CLOSE_QUOTE_CARD': {
+       if (state.phase === 'finale') {
+          return { ...state, phase: 'freeRoam', isQuoteCardOpen: false, hintText: "You can now tap on any letter to see its message again." };
+       }
        if (state.phase === 'playing') {
           return {
             ...state,
             isQuoteCardOpen: false,
             hintText: getWelcomeHint(),
           };
-        }
-      return { ...state, isQuoteCardOpen: false };
+       }
+       return { ...state, isQuoteCardOpen: false };
+    }
 
     case 'REPLAY':
       localStorage.removeItem('starlight-serenade-progress');
-      return initialState;
+      // A clean slate, but we go directly to 'playing' to skip the intro animation.
+      return { 
+          ...initialState, 
+          phase: 'playing', 
+          hintText: getWelcomeHint() 
+      };
 
     default:
       return state;
@@ -210,7 +219,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const parsedState = JSON.parse(savedState);
         // Ensure phase is valid, default to intro if not
         const phase = ['intro', 'playing', 'finale', 'freeRoam'].includes(parsedState.phase) ? parsedState.phase : 'intro';
-        dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase } });
+        if (phase === 'intro') {
+            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState } });
+        } else {
+            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase } });
+        }
       }
     } catch (e) {
       console.error("Failed to load state from localStorage", e);
@@ -237,3 +250,5 @@ export const useGame = () => {
   }
   return context;
 };
+
+    
