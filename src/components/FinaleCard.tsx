@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { useState } from 'react';
 import { generateWallpaper } from '@/lib/wallpaper';
 import SaveWallpaperDialog from './SaveWallpaperDialog';
-import { Replay, Download } from 'lucide-react';
+import { RotateCcw, Download } from 'lucide-react';
 
 export default function FinaleCard() {
   const { dispatch } = useGame();
@@ -45,7 +45,7 @@ export default function FinaleCard() {
           </CardContent>
           <CardFooter className="flex-col gap-4 sm:flex-row">
             <Button onClick={handleReplay} variant="outline" className="w-full">
-              <Replay className="mr-2" />
+              <RotateCcw className="mr-2" />
               Replay the stars
             </Button>
             <Button onClick={handleSaveWallpaper} disabled={isGenerating} className="w-full">
