@@ -24,7 +24,7 @@ interface GameState {
 }
 
 type Action =
-  | { type: 'TAP_STAR'; payload: { tappedStarIndex: number; isFreeRoam?: boolean } }
+  | { type: 'TAP_STAR'; payload: { tappedStarIndex: number; letterIndex?: number, isFreeRoam?: boolean } }
   | { type: 'CLOSE_QUOTE_CARD' }
   | { type: 'SET_HINT'; payload: string }
   | { type: 'REPLAY' }
@@ -62,20 +62,38 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, phase: 'playing' };
 
     case 'TAP_STAR': {
-      const { tappedStarIndex, isFreeRoam } = action.payload;
-      const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
-      const currentPath = LETTER_PATHS[currentLetter];
+      if (state.isQuoteCardOpen) return state; // Prevent taps while card is open
 
-      if (isFreeRoam) {
-        // In free roam, find which letter was tapped
-        // This is a simplified version; a real implementation would need to check coordinates
-        const quoteKey = getQuoteKey(currentLetter, state.aCount);
+      const { tappedStarIndex, isFreeRoam, letterIndex } = action.payload;
+      
+      if (state.phase === 'freeRoam') {
+        if(letterIndex === undefined) return state;
+        const letter = STAR_DATA.letters[letterIndex];
+        // In free roam, we need to determine which 'A' it is if there are multiple.
+        // This is a simplification; a more robust solution would track the specific A's position.
+        // For now, let's just show the first A's quote.
+        let aCountForQuote = 1;
+        if(letter === 'A') {
+          let seenAs = 0;
+          for(let i=0; i <= letterIndex; i++) {
+            if(STAR_DATA.letters[i] === 'A') seenAs++;
+          }
+          aCountForQuote = seenAs;
+        }
+
+        const quoteKey = getQuoteKey(letter, aCountForQuote);
+        const quote = STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes];
         return {
           ...state,
           isQuoteCardOpen: true,
-          quote: STAR_DATA.quotes[quoteKey as keyof typeof STAR_DATA.quotes],
+          quote: quote,
         };
       }
+
+      if (state.phase !== 'playing') return state;
+
+      const currentLetter = STAR_DATA.letters[state.currentLetterIndex];
+      const currentPath = LETTER_PATHS[currentLetter];
 
       const isCorrect = tappedStarIndex === state.currentStarIndex;
 
@@ -148,11 +166,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
   }
 };
 
-let dispatch: Dispatch<Action>;
-
 export const GameProvider = ({ children }: { children: ReactNode }) => {
-  const [state, _dispatch] = useReducer(gameReducer, initialState);
-  dispatch = _dispatch;
+  const [state, dispatch] = useReducer(gameReducer, initialState);
   
   const { lastTappedStar, phase } = state;
 

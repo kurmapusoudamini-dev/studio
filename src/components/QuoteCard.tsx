@@ -28,38 +28,46 @@ export default function QuoteCard() {
       dispatch({ type: 'CLOSE_QUOTE_CARD' });
     }
   };
+  
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if the overlay itself is clicked, not the card content
+    if (e.target === e.currentTarget) {
+      handleNext();
+    }
+  };
 
   return (
     <>
       <div
+        onClick={handleOverlayClick}
         className={cn(
-          'fixed inset-0 z-10 bg-black/30 transition-opacity duration-300',
+          'fixed inset-0 z-30 bg-black/50 transition-opacity duration-300 flex items-center justify-center',
           isQuoteCardOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
-      />
-      <div
-        className={cn(
-          'fixed bottom-0 left-1/2 z-20 w-[90%] max-w-md transition-transform duration-500 ease-out',
-          isQuoteCardOpen ? 'translate-y-0 translate-x-[-50%]' : 'translate-y-full translate-x-[-50%]',
-          prefersReducedMotion && isQuoteCardOpen && 'animate-fade-in',
-          prefersReducedMotion && !isQuoteCardOpen && 'opacity-0'
-        )}
-        style={{
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
       >
-        <Card className="bg-card/70 backdrop-blur-lg border-primary/20 overflow-hidden">
-          <CardContent className="p-6 text-center">
-            {isQuoteCardOpen && <RoseIcon />}
-            <p className="text-lg text-accent">{quote}</p>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleNext} className="w-full">
-              Next
-              <ArrowRight className="ml-2" />
-            </Button>
-          </CardFooter>
-        </Card>
+        <div
+          // This div prevents the card from inheriting the parent's click handler
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            'w-[90%] max-w-md transition-all duration-500 ease-out',
+            isQuoteCardOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+            prefersReducedMotion && isQuoteCardOpen && 'animate-fade-in',
+            prefersReducedMotion && !isQuoteCardOpen && 'opacity-0'
+          )}
+        >
+          <Card className="bg-card/70 backdrop-blur-lg border-primary/20 overflow-hidden">
+            <CardContent className="p-6 text-center">
+              {isQuoteCardOpen && <RoseIcon />}
+              <p className="text-lg text-accent">{quote}</p>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleNext} className="w-full">
+                Next
+                <ArrowRight className="ml-2" />
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </>
   );
