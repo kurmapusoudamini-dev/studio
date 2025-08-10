@@ -1,9 +1,35 @@
 'use client';
-import type { HintInput } from '@/ai/flows/contextual-hint-tool';
-import { getHint } from '@/ai/flows/contextual-hint-tool';
 import { STAR_DATA, LETTER_PATHS } from '@/lib/data';
 import type { Dispatch, ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
+import React, { useContext, createContext, useReducer, useEffect } from 'react';
+
+const CORRECT_HINTS = [
+  "Beautiful! You've found the way.",
+  "Perfect! The stars align for you.",
+  "Nicely done! On to the next.",
+  "You're a natural stargazer.",
+  "Brilliant! Keep going.",
+  "That's it! You're lighting up the sky.",
+  "Wonderful! The constellation is taking shape.",
+  "You've got it! What's next?",
+  "Excellent! Another star in place.",
+  "Shining bright! Keep it up.",
+];
+
+const INCORRECT_HINTS = [
+  "Not quite. Look for the star that glows the brightest.",
+  "Almost. The right one is calling to you.",
+  "That one's a bit shy. Try the glowing one.",
+  "Keep searching. The next star in the path is waiting.",
+  "A lovely star, but not the one we need. Look for a gentle pulse of light.",
+  "Close! The correct star has a special glow.",
+  "Let your heart guide you to the glowing star.",
+  "Another beautiful star, but not our next step. Find the one that pulses.",
+  "The universe has a path for you, find the glowing star.",
+  "Don't give up! The right star is out there, glowing for you.",
+];
+
+const getRandomHint = (hints: string[]) => hints[Math.floor(Math.random() * hints.length)];
 
 type GamePhase = 'intro' | 'playing' | 'finale' | 'freeRoam';
 
@@ -17,21 +43,15 @@ interface GameState {
   quote: string;
   showWrongTapEffect: { starIndex: number } | null;
   aCount: number;
-  lastTappedStar: {
-    tappedStarIndex: number;
-    isCorrect: boolean;
-  } | null;
 }
 
 type Action =
   | { type: 'TAP_STAR'; payload: { tappedStarIndex: number; letterIndex?: number, isFreeRoam?: boolean } }
   | { type: 'CLOSE_QUOTE_CARD' }
-  | { type: 'SET_HINT'; payload: string }
   | { type: 'REPLAY' }
   | { type: 'FINISH_INTRO' }
   | { type: 'LOAD_PROGRESS'; payload: GameState }
-  | { type: 'RESET_WRONG_TAP_EFFECT' }
-  | { type: 'RESET_LAST_TAPPED_STAR' };
+  | { type: 'RESET_WRONG_TAP_EFFECT' };
 
 const getQuoteKey = (letter: string, aCount: number) => {
   if (letter !== 'A') return letter;
@@ -48,7 +68,6 @@ const initialState: GameState = {
   quote: '',
   showWrongTapEffect: null,
   aCount: 1,
-  lastTappedStar: null,
 };
 
 const GameContext = createContext<{ state: GameState; dispatch: Dispatch<Action> } | undefined>(undefined);
@@ -59,7 +78,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return action.payload;
 
     case 'FINISH_INTRO':
-      return { ...state, phase: 'playing' };
+      return { ...state, phase: 'playing', hintText: getRandomHint(INCORRECT_HINTS) };
 
     case 'TAP_STAR': {
       if (state.isQuoteCardOpen) return state; // Prevent taps while card is open
@@ -120,8 +139,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               completedLetters: newCompletedLetters,
               isQuoteCardOpen: true,
               quote,
-              lastTappedStar: { tappedStarIndex, isCorrect },
-              hintText: 'Beautiful!', // Immediate feedback
+              hintText: getRandomHint(CORRECT_HINTS),
             };
           } else {
             // Go to next letter
@@ -133,8 +151,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
               aCount: nextACount,
               isQuoteCardOpen: true,
               quote: quote,
-              lastTappedStar: { tappedStarIndex, isCorrect },
-              hintText: 'Beautiful!', // Immediate feedback
+              hintText: getRandomHint(CORRECT_HINTS),
             };
           }
         } else {
@@ -142,8 +159,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           return { 
             ...state, 
             currentStarIndex: nextStarIndex, 
-            lastTappedStar: { tappedStarIndex, isCorrect },
-            hintText: 'Beautiful!', // Immediate feedback
+            hintText: getRandomHint(CORRECT_HINTS),
           };
         }
       } else {
@@ -151,23 +167,17 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         return { 
           ...state, 
           showWrongTapEffect: { starIndex: tappedStarIndex }, 
-          lastTappedStar: { tappedStarIndex, isCorrect },
-          hintText: 'Almost—try the glowing star.', // Immediate feedback
+          hintText: getRandomHint(INCORRECT_HINTS),
         };
       }
     }
-    case 'RESET_LAST_TAPPED_STAR':
-      return { ...state, lastTappedStar: null };
-
+   
     case 'RESET_WRONG_TAP_EFFECT':
       return { ...state, showWrongTapEffect: null };
       
     case 'CLOSE_QUOTE_CARD':
-      return { ...state, isQuoteCardOpen: false };
+      return { ...state, isQuoteCardOpen: false, hintText: getRandomHint(INCORRECT_HINTS) };
       
-    case 'SET_HINT':
-      return { ...state, hintText: action.payload };
-
     case 'REPLAY':
       // After finale, replay enters free roam mode
       return { ...initialState, phase: 'freeRoam', completedLetters: Array(STAR_DATA.letters.length).fill(true), hintText: 'Tap any star to see its message again.' };
@@ -180,50 +190,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   
-  const { lastTappedStar, phase, currentLetterIndex, currentStarIndex } = state;
-
-  useEffect(() => {
-    // This effect now only fetches the AI hint in the background
-    if (phase !== 'playing' || !lastTappedStar) return;
-
-    const { isCorrect } = lastTappedStar;
-    const currentLetter = STAR_DATA.letters[currentLetterIndex];
-    const currentPath = LETTER_PATHS[currentLetter];
-
-    const hintInput: HintInput = {
-      isCorrect,
-      currentLetterIndex: currentLetterIndex,
-      // If correct, we need to send the index of the star that was just completed
-      // If incorrect, we send the current star index they should be aiming for
-      currentStarIndex: isCorrect ? currentStarIndex -1 : currentStarIndex,
-      totalStarsInLetter: currentPath.length,
-    };
-    
-    let isMounted = true;
-    
-    // Fetch AI hint but don't wait for it to update UI
-    getHint(hintInput)
-      .then(res => {
-        if (isMounted) {
-          // Update the hint text when the AI response arrives
-          dispatch({ type: 'SET_HINT', payload: res.hint });
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to get hint:", err);
-        // The reducer has already set a sensible default, so we might not need to do anything here
-      })
-      .finally(() => {
-        if (isMounted) {
-          // Reset the trigger for this effect
-          dispatch({ type: 'RESET_LAST_TAPPED_STAR' });
-        }
-      });
-      
-    return () => { isMounted = false; }
-  }, [lastTappedStar, phase, currentLetterIndex, currentStarIndex]);
-
-
   useEffect(() => {
     try {
       const savedState = localStorage.getItem('starlight-serenade-progress');
