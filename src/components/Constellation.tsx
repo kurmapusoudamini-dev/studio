@@ -110,10 +110,16 @@ export default function Constellation() {
     };
 
     if (phase === 'playing') {
-      // Draw lines for the current, in-progress letter
+      // Draw all fully completed letters
+      completedLetters.forEach((isCompleted, letterIndex) => {
+        if (isCompleted) {
+          drawLinesForLetter(letterIndex);
+        }
+      });
+      // Draw the current, in-progress letter
       drawLinesForLetter(currentLetterIndex, currentStarIndex);
     } else if (phase === 'finale' || phase === 'freeRoam') {
-      // In finale/freeRoam, all letters are considered complete
+      // Draw all letters as complete
       STAR_DATA.letters.forEach((_, letterIdx) => {
         drawLinesForLetter(letterIdx);
       });
@@ -159,7 +165,7 @@ export default function Constellation() {
               className={cn(
                 'stroke-primary/70 transition-all duration-500',
                  (phase === 'finale' || phase === 'freeRoam') ? 'stroke-primary' : '',
-                 prefersReducedMotion ? 'animate-fade-in' : 'rose-blessing'
+                 prefersReducedMotion ? 'opacity-100' : 'rose-blessing'
               )}
               strokeWidth="2"
               strokeLinecap="round"
