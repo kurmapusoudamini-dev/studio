@@ -108,15 +108,8 @@ export default function Constellation() {
     });
 
     // Draw lines for the current letter in progress
-    if (phase === 'playing') {
+    if (phase === 'playing' && !completedLetters[currentLetterIndex]) {
        drawLinesForLetter(currentLetterStr, currentLetterIndex, currentStarIndex);
-    } else if (phase === 'finale' || phase === 'freeRoam') {
-      // In finale, draw any letters that weren't marked as complete for some reason
-      STAR_DATA.letters.forEach((letter, letterIdx) => {
-        if (!completedLetters[letterIdx]) {
-          drawLinesForLetter(letter, letterIdx);
-        }
-      });
     }
 
     return lines;

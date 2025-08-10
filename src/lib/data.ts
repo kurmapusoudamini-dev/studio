@@ -32,8 +32,9 @@ export const LETTER_PATHS: { [key: string]: LetterPath } = {
       { x: 0.3, y: 0.6 }, { x: 0.7, y: 0.6 },                    // Cross-bar (3,4)
     ],
     segments: [
-      [0, 1, 2, 0], // The triangle part
-      [3, 4],       // The cross-bar
+      [0, 1], 
+      [0, 2],
+      [3, 4],
     ],
   },
   P: {
