@@ -1,3 +1,4 @@
+
 'use client';
 import { useGame } from '@/context/GameContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -79,29 +80,43 @@ export default function Constellation() {
   }, [phase, currentPath, currentStarIndex, showWrongTapEffect, dims, completedLetters]);
   
   const renderedLines = useMemo(() => {
-    if (phase === 'playing') {
-       if (currentStarIndex < 2) return [];
-       const lines = [];
+    const lines: any[] = [];
+    
+    // Draw lines for all completed letters
+    completedLetters.forEach((isCompleted, letterIdx) => {
+      if (isCompleted) {
+        const letter = STAR_DATA.letters[letterIdx];
+        const path = LETTER_PATHS[letter];
+        for (let i = 1; i < path.length; i++) {
+          const start = transformCoords(path[i-1]);
+          const end = transformCoords(path[i]);
+          lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-completed-${letterIdx}-${i}`});
+        }
+      }
+    });
+
+    // Draw lines for the current letter in progress
+    if (phase === 'playing' && currentStarIndex > 1) {
        for (let i = 1; i < currentStarIndex; i++) {
            const start = transformCoords(currentPath[i-1]);
            const end = transformCoords(currentPath[i]);
-           lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-${currentLetterIndex}-${i}`});
+           lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-current-${currentLetterIndex}-${i}`});
        }
-       return lines;
+    } else if (phase === 'finale' || phase === 'freeRoam') {
+      // In finale, all lines should be drawn. This covers any letters not marked as complete.
+      STAR_DATA.letters.forEach((letter, letterIdx) => {
+        if (!completedLetters[letterIdx]) {
+          const path = LETTER_PATHS[letter];
+          for (let i = 1; i < path.length; i++) {
+            const start = transformCoords(path[i-1]);
+            const end = transformCoords(path[i]);
+            lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-final-${letterIdx}-${i}`});
+          }
+        }
+      });
     }
-    if (phase === 'finale' || phase === 'freeRoam') {
-       const lines: any[] = [];
-       STAR_DATA.letters.forEach((letter, letterIdx) => {
-           const path = LETTER_PATHS[letter];
-           for (let i = 0; i < path.length - 1; i++) {
-               const start = transformCoords(path[i]);
-               const end = transformCoords(path[i+1]);
-               lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-final-${letterIdx}-${i}`});
-           }
-       });
-       return lines;
-    }
-    return [];
+
+    return lines;
   }, [phase, currentStarIndex, currentLetterIndex, currentPath, dims, completedLetters]);
   
 
@@ -174,3 +189,4 @@ export default function Constellation() {
     </div>
   );
 }
+
