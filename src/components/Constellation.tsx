@@ -110,23 +110,17 @@ export default function Constellation() {
     };
 
     if (phase === 'playing') {
-      // Draw all fully completed letters
-      completedLetters.forEach((isCompleted, letterIndex) => {
-        if (isCompleted) {
-          drawLinesForLetter(letterIndex);
-        }
-      });
-      // Draw the current, in-progress letter
+      // Only draw the current, in-progress letter
       drawLinesForLetter(currentLetterIndex, currentStarIndex);
     } else if (phase === 'finale' || phase === 'freeRoam') {
-      // Draw all letters as complete
+      // Draw all letters as complete for the finale
       STAR_DATA.letters.forEach((_, letterIdx) => {
         drawLinesForLetter(letterIdx);
       });
     }
   
     return lines;
-  }, [phase, currentLetterIndex, currentStarIndex, completedLetters, dims]);
+  }, [phase, currentLetterIndex, currentStarIndex, dims]);
 
 
   const handleStarClick = (starIndex: number, letterIndex?: number) => {
@@ -186,7 +180,7 @@ export default function Constellation() {
                 star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
                 star.isNext && 'animate-pulse star-glow-active',
                 star.isWrong && 'animate-shake fill-destructive',
-                (phase === 'finale' || phase === 'freeRoam' || completedLetters[star.letterIndex]) && 'star-glow',
+                (phase === 'finale' || phase === 'freeRoam') && 'star-glow',
                 phase === 'finale' && 'animate-fade-in-slow'
               )}
               aria-label={`Star ${star.originalIndex + 1} for letter ${STAR_DATA.letters[star.letterIndex]}`}
