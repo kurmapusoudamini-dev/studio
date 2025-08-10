@@ -163,10 +163,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         };
       } else {
         // Go to the next star in the same letter
+         const isFirstTapOfTheGame = state.currentLetterIndex === 0 && state.currentStarIndex === 0;
         return { 
           ...state, 
           currentStarIndex: nextStarIndex, 
-          hintText: getRandomHint(CORRECT_HINTS),
+          hintText: isFirstTapOfTheGame ? getWelcomeHint() : getRandomHint(CORRECT_HINTS),
           showWrongTapEffect: null,
         };
       }
@@ -180,11 +181,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           return { ...state, phase: 'freeRoam', isQuoteCardOpen: false, hintText: "You can now tap on any letter to see its message again." };
        }
        if (state.phase === 'playing') {
-          const isFirstLetter = state.currentLetterIndex === 0 || (state.currentLetterIndex === 1 && state.currentStarIndex === 0);
           return {
             ...state,
             isQuoteCardOpen: false,
-            hintText: isFirstLetter ? getWelcomeHint() : getRandomHint(CORRECT_HINTS),
+            hintText: getWelcomeHint(),
           };
        }
        return { ...state, isQuoteCardOpen: false };
@@ -215,8 +215,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (phase === 'intro') {
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState } });
         } else {
-            // Restore everything but ensure card is closed on reload
-            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase, isQuoteCardOpen: false } });
+            // Restore everything but ensure card is closed on reload and hint is correct
+            const hintText = phase === 'playing' ? getWelcomeHint() : "You can now tap on any letter to see its message again.";
+            dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase, isQuoteCardOpen: false, hintText } });
         }
       }
     } catch (e) {
