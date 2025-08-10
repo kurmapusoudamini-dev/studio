@@ -110,12 +110,6 @@ export default function Constellation() {
     };
 
     if (phase === 'playing') {
-      // Draw lines for completed letters
-      completedLetters.forEach((isCompleted, letterIdx) => {
-        if (isCompleted) {
-          drawLinesForLetter(letterIdx);
-        }
-      });
       // Draw lines for the current, in-progress letter
       drawLinesForLetter(currentLetterIndex, currentStarIndex);
     } else if (phase === 'finale' || phase === 'freeRoam') {
