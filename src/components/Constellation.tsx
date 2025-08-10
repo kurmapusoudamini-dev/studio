@@ -107,8 +107,12 @@ export default function Constellation() {
   }, [phase, currentStarIndex, currentLetterIndex, currentPath, dims, completedLetters]);
   
 
-  const handleStarClick = (starIndex: number) => {
-    dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex, isFreeRoam: phase === 'freeRoam' } });
+  const handleStarClick = (starIndex: number, letterIndex?: number) => {
+    if (phase === 'freeRoam') {
+      dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex, letterIndex, isFreeRoam: true } });
+    } else {
+      dispatch({ type: 'TAP_STAR', payload: { tappedStarIndex: starIndex } });
+    }
   };
   
   const handleNextClick = () => {
@@ -130,8 +134,8 @@ export default function Constellation() {
           <path id="star-path" d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
         </defs>
         <g>
-          {renderedLines.map(line => (
-            <line {...line}
+          {renderedLines.map(({ key, ...lineProps }) => (
+            <line key={key} {...lineProps}
               className={cn(
                 'stroke-primary transition-all duration-500',
                 prefersReducedMotion ? 'animate-fade-in' : ''
@@ -144,10 +148,11 @@ export default function Constellation() {
         </g>
         
         {renderedStars.map((star, i) => (
-           <g key={`star-group-${star.letterIndex ?? currentLetterIndex}-${star.originalIndex}`} transform={`translate(${star.x}, ${star.y}) scale(1.5)`}>
+           <g key={`star-group-${star.letterIndex ?? currentLetterIndex}-${star.originalIndex}`} 
+              transform={`translate(${star.x}, ${star.y}) scale(1.5)`}
+              onClick={() => handleStarClick(star.originalIndex, star.letterIndex)}>
             <use
               href="#star-path"
-              onClick={() => handleStarClick(star.originalIndex)}
               className={cn(
                 'fill-accent transition-all duration-300 transform -translate-x-3 -translate-y-3 cursor-pointer',
                 star.isCompleted ? 'opacity-70 star-glow' : 'opacity-100',
