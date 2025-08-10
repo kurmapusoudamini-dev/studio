@@ -163,11 +163,12 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         };
       } else {
         // Go to the next star in the same letter
-        const isFirstTap = state.currentLetterIndex === 0 && state.currentStarIndex === 0;
+        // Only provide a random correct hint after the first star of a letter is passed.
+        const newHint = state.currentStarIndex > 0 ? getRandomHint(CORRECT_HINTS) : state.hintText;
         return { 
           ...state, 
           currentStarIndex: nextStarIndex, 
-          hintText: isFirstTap ? getWelcomeHint() : getRandomHint(CORRECT_HINTS),
+          hintText: newHint,
           showWrongTapEffect: null,
         };
       }
