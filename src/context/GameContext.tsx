@@ -217,7 +217,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState } });
         } else {
             // Restore everything but ensure card is closed on reload and hint is correct
-            const hintText = phase === 'playing' ? getWelcomeHint() : "You can now tap on any letter to see its message again.";
+            const hintText = (phase === 'playing' && parsedState.currentStarIndex === 0) ? getWelcomeHint() : "You can now tap on any letter to see its message again.";
             dispatch({ type: 'LOAD_PROGRESS', payload: { ...initialState, ...parsedState, phase, isQuoteCardOpen: false, hintText } });
         }
       }
