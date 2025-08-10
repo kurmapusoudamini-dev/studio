@@ -1,10 +1,11 @@
 'use client';
 
 import { useGame } from '@/context/GameContext';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { Button } from './ui/button';
+import { ArrowRight } from 'lucide-react';
 
 const RoseIcon = () => (
     <svg viewBox="0 0 100 100" className="rose-blessing h-16 w-16 mx-auto mb-4 text-primary">
@@ -22,16 +23,7 @@ export default function QuoteCard() {
   const { isQuoteCardOpen, quote } = state;
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  useEffect(() => {
-    if (isQuoteCardOpen) {
-      const timer = setTimeout(() => {
-        dispatch({ type: 'CLOSE_QUOTE_CARD' });
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [isQuoteCardOpen, dispatch]);
-
-  const handleTapOutside = () => {
+  const handleNext = () => {
     if (isQuoteCardOpen) {
       dispatch({ type: 'CLOSE_QUOTE_CARD' });
     }
@@ -44,7 +36,6 @@ export default function QuoteCard() {
           'fixed inset-0 z-10 bg-black/30 transition-opacity duration-300',
           isQuoteCardOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
-        onClick={handleTapOutside}
       />
       <div
         className={cn(
@@ -62,6 +53,12 @@ export default function QuoteCard() {
             {isQuoteCardOpen && <RoseIcon />}
             <p className="text-lg text-accent">{quote}</p>
           </CardContent>
+          <CardFooter>
+            <Button onClick={handleNext} className="w-full">
+              Next
+              <ArrowRight className="ml-2" />
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </>
