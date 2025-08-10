@@ -45,24 +45,24 @@ export default function Constellation() {
 
     return { x: star.x * scale + xOffset, y: star.y * scale + yOffset };
   };
-
+  
   const renderedStars = useMemo(() => {
-    let starsToRender: any[] = [];
-    
+    const starsToRender: any[] = [];
+  
     if (phase === 'playing') {
-      // Show stars for the current letter
       const currentLetterStr = STAR_DATA.letters[currentLetterIndex];
       const currentLetterStars = LETTER_PATHS[currentLetterStr]?.stars || [];
-      starsToRender = currentLetterStars.map((star, index) => ({
-        ...transformCoords(star),
-        isCompleted: index < currentStarIndex,
-        isNext: index === currentStarIndex,
-        isWrong: showWrongTapEffect?.starIndex === index,
-        originalIndex: index,
-        letterIndex: currentLetterIndex
-      }));
+      starsToRender.push(
+        ...currentLetterStars.map((star, index) => ({
+          ...transformCoords(star),
+          isCompleted: index < currentStarIndex,
+          isNext: index === currentStarIndex,
+          isWrong: showWrongTapEffect?.starIndex === index,
+          originalIndex: index,
+          letterIndex: currentLetterIndex,
+        }))
+      );
     } else if (phase === 'finale' || phase === 'freeRoam') {
-      // Show all stars for the completed constellation
       STAR_DATA.letters.forEach((letter, letterIdx) => {
         const path = LETTER_PATHS[letter]?.stars || [];
         path.forEach((star, starIdx) => {
@@ -72,67 +72,60 @@ export default function Constellation() {
             isNext: false,
             isWrong: false,
             originalIndex: starIdx,
-            letterIndex: letterIdx
+            letterIndex: letterIdx,
           });
         });
       });
     }
     
     return starsToRender;
-  }, [phase, currentLetterIndex, currentStarIndex, showWrongTapEffect, dims]);
-  
-  
+  }, [phase, currentLetterIndex, currentStarIndex, completedLetters, showWrongTapEffect, dims]);
+
   const renderedLines = useMemo(() => {
     const lines: any[] = [];
+  
     const drawLinesForLetter = (letterIndex: number, maxStarIndex?: number) => {
       const letterStr = STAR_DATA.letters[letterIndex];
       const letterDef = LETTER_PATHS[letterStr];
       if (!letterDef) return;
-
+  
       const stars = letterDef.stars;
       const segments = letterDef.segments;
-
+  
       segments.forEach((segment, segIdx) => {
         for (let i = 1; i < segment.length; i++) {
           const startIdx = segment[i - 1];
           const endIdx = segment[i];
-
-          // If a maxStarIndex is provided (for in-progress letters),
-          // only draw the segment if both start and end stars are completed.
+  
           if (maxStarIndex === undefined || (startIdx < maxStarIndex && endIdx < maxStarIndex)) {
             const start = transformCoords(stars[startIdx]);
             const end = transformCoords(stars[endIdx]);
             lines.push({
-              x1: start.x,
-              y1: start.y,
-              x2: end.x,
-              y2: end.y,
-              key: `line-l${letterIndex}-s${segIdx}-i${i}`
+              x1: start.x, y1: start.y, x2: end.x, y2: end.y,
+              key: `line-l${letterIndex}-s${segIdx}-i${i}`,
             });
           }
         }
       });
     };
-
+  
     if (phase === 'playing') {
       // Draw lines for the current, in-progress letter
       drawLinesForLetter(currentLetterIndex, currentStarIndex);
-    }
-    
-    // Always draw lines for all fully completed letters
-    completedLetters.forEach((isCompleted, letterIdx) => {
-      if (isCompleted) {
-        drawLinesForLetter(letterIdx);
-      }
-    });
-
-    if (phase === 'finale' || phase === 'freeRoam') {
+    } else if (phase === 'finale' || phase === 'freeRoam') {
       // In finale/freeRoam, all letters are considered complete
       STAR_DATA.letters.forEach((_, letterIdx) => {
         drawLinesForLetter(letterIdx);
       });
+    } else {
+        // Draw lines for all fully completed letters
+        completedLetters.forEach((isCompleted, letterIdx) => {
+          if (isCompleted) {
+            drawLinesForLetter(letterIdx);
+          }
+        });
     }
-
+  
     return lines;
   }, [phase, currentLetterIndex, currentStarIndex, completedLetters, dims]);
 
