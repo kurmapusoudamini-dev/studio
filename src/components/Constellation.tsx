@@ -80,14 +80,12 @@ export default function Constellation() {
   
   const renderedLines = useMemo(() => {
     if (phase === 'playing') {
-       if (currentStarIndex === 0) return [];
+       if (currentStarIndex < 2) return [];
        const lines = [];
-       for (let i = 0; i < currentStarIndex; i++) {
-           if (i < currentPath.length - 1) {
-               const start = transformCoords(currentPath[i]);
-               const end = transformCoords(currentPath[i+1]);
-               lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-${currentLetterIndex}-${i}`});
-           }
+       for (let i = 1; i < currentStarIndex; i++) {
+           const start = transformCoords(currentPath[i-1]);
+           const end = transformCoords(currentPath[i]);
+           lines.push({ x1: start.x, y1: start.y, x2: end.x, y2: end.y, key: `line-${currentLetterIndex}-${i}`});
        }
        return lines;
     }
